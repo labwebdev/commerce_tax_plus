@@ -1,0 +1,50 @@
+<?php
+
+/**
+ *@file
+ * commerce_tax_plus Module.
+ */
+
+ use Drupal\Core\Form\FormStateInterface;
+ use Drupal\Core\Datetime\DrupalDateTime;
+
+  /**
+  * Implements hook_form_alter().
+  *commerce-tax-type-edit-form
+  *territory
+  *territories
+  */
+
+  function commerce_tax_plus_form_alter(&$form, &$form_state, $form_id) {
+
+    dpm($form_id);
+
+  }
+
+
+
+//  function commerce_tax_plus_form_alter(array &$form, FormStateInterface $form_state, $form_id) {
+//    if ($form_id == 'territories') {
+//      $form['limit_county'] = array(
+//        '#type' => 'checkbox',
+//        '#title' => $this->t('Limit by county'),
+//      );
+//    }
+// }
+
+// function hook_form_alter(&$form, &$form_state, $form_id) {
+//   print_r($form);
+// }
+
+// function hook_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+//   // Modification for the form with the given form ID goes here. For example, if
+//   // FORM_ID is "user_register_form" this code would run only on the user
+//   // registration form.
+//
+//   // Add a checkbox to registration form about agreeing to terms of use.
+//   $form['terms_of_use'] = array(
+//     '#type' => 'checkbox',
+//     '#title' => t("I agree with the website's terms and conditions."),
+//     '#required' => TRUE,
+//   );
+//}
