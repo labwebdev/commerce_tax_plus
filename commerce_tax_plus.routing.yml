@@ -1,0 +1,7 @@
+CommerceTaxPlus.form:
+  path: '/admin/config/CommerceTaxPlusForm'
+  defaults:
+    _form: 'Drupal\commerce_tax_plus\Form\CommerceTaxPlusForm'
+    _title: 'CommerceTaxPlus Form'
+  requirements:
+    _permission: 'CommerceTaxPlus Testing'

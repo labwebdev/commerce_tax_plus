@@ -1,4 +1,4 @@
-commerce_tax_plus testing:
-    title: 'Perform commerce_tax_plus Testing'
-    description: 'Perform the commerce_tax_plus Testing'
+CommerceTaxPlus Testing:
+    title: 'Perform CommerceTaxPlus Testing'
+    description: 'Perform the CommerceTaxPlus Testing'
     restrict access: true
