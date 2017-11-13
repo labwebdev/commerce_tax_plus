@@ -228,8 +228,8 @@ class County extends LocalTaxTypeBase {
       $territory_form['limit_county'] = [
         '#type' => 'checkbox',
         '#title' => t('Limit by county'),
-        '#prefix' => '</tr><tr><td>',
-        '#suffix' => '</td></tr><tr>',
+        '#prefix' => '<tr><td>',
+        '#suffix' => '</td></tr>',
       ];
     }
     $form['territories'][] = [
