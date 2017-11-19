@@ -1,8 +1,7 @@
 <?php
 
-//modified: changed namespace to be the new module
 namespace Drupal\commerce_tax_plus\Plugin\Commerce\TaxType;
-//namespace Drupal\commerce_tax\Plugin\Commerce\TaxType;
+
 
 use Drupal\commerce_price\RounderInterface;
 use Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface;
@@ -13,31 +12,40 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-//modified: added for LocalTaxTypeBase
+
+//mod
 use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeBase;
+use Drupal\commerce_order\Entity\OrderItemInterface;
+use Drupal\profile\Entity\ProfileInterface;
+use Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService;
+use CommerceGuys\Addressing\AddressInterface;
 
 /**
- * Provides the Custom tax type.
+ * Provides the County tax type.
  *
  * @CommerceTaxType(
- *   id = "County",
+ *   id = "county",
  *   label = "County",
  * )
  */
-
- //modified: changed class to "county"
 class County extends LocalTaxTypeBase {
-
-  /**
+    //mod
+    /**
+     * @var \Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService
+     */
+    protected $APIService;
+     
+   /**
    * The UUID generator.
    *
    * @var \Drupal\Component\Uuid\UuidInterface
    */
   protected $uuidGenerator;
 
+  //mod
   /**
-   * Constructs a new Custom object.
-   *
+   * Constructs a new County object.
+   * {@inheritdoc}
    * @param array $configuration
    *   A configuration array containing information about the plugin instance.
    * @param string $plugin_id
@@ -55,10 +63,13 @@ class County extends LocalTaxTypeBase {
    * @param \Drupal\Component\Uuid\UuidInterface $uuid_generator
    *   The UUID generator.
    */
-  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, RounderInterface $rounder, ChainTaxRateResolverInterface $chain_rate_resolver, UuidInterface $uuid_generator) {
+  public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, RounderInterface $rounder, ChainTaxRateResolverInterface $chain_rate_resolver, UuidInterface $uuid_generator, SmartyStreetsAPIService $APIService) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $event_dispatcher, $rounder, $chain_rate_resolver);
 
     $this->uuidGenerator = $uuid_generator;
+    //mod
+    $this->APIService = $APIService;
+    
   }
 
   /**
@@ -73,7 +84,10 @@ class County extends LocalTaxTypeBase {
       $container->get('event_dispatcher'),
       $container->get('commerce_price.rounder'),
       $container->get('commerce_tax.chain_tax_rate_resolver'),
-      $container->get('uuid')
+      $container->get('uuid'),
+      //mod
+      $container->get('smartystreetsapi.service')
+      
     );
   }
 
@@ -224,13 +238,6 @@ class County extends LocalTaxTypeBase {
           'wrapper' => $wrapper_id,
         ],
       ];
-      //modified: add the limit by county checkbox (not working)
-      $territory_form['limit_county'] = [
-        '#type' => 'checkbox',
-        '#title' => t('Limit by county'),
-        '#prefix' => '<tr><td>',
-        '#suffix' => '</td></tr>',
-      ];
     }
     $form['territories'][] = [
       'add_territory' => [
@@ -331,10 +338,13 @@ class County extends LocalTaxTypeBase {
       $this->configuration['round'] = $values['round'];
       $this->configuration['rates'] = [];
       foreach (array_filter($values['rates']) as $rate) {
+          $ratestr = $rate['percentage'];
+          $ratestr=$ratestr/100;
+          settype($ratestr,"string");
         $this->configuration['rates'][] = [
           'id' => $rate['rate']['id'],
           'label' => $rate['rate']['label'],
-          'percentage' => $rate['percentage'] / 100,
+            'percentage' => $ratestr,
         ];
       }
       $this->configuration['territories'] = [];
@@ -415,4 +425,57 @@ class County extends LocalTaxTypeBase {
     return $zones;
   }
 
+  /**
+   * Resolves the tax zones for the given order item and customer profile.
+   *
+   * @param \Drupal\commerce_order\Entity\OrderItemInterface $order_item
+   *   The order item.
+   * @param \Drupal\profile\Entity\ProfileInterface $customer_profile
+   *   The customer profile. Contains the address and tax number.
+   *
+   * @return \Drupal\commerce_tax\TaxZone[]
+   *   The tax zones.
+   */
+  protected function resolveZones(OrderItemInterface $order_item, ProfileInterface $customer_profile) {
+      $customer_address = $customer_profile->get('address')->first();
+      $resolved_zones = [];
+      foreach ($this->getZones() as $zone) {
+          if ($zone->match($customer_address)) {          
+              if($this->MatchCounty($customer_address)){
+                  $resolved_zones[] = $zone;
+              }
+          }
+      }
+      return $resolved_zones;
+  }
+  
+  public function LookupValidAddress($street_address,$city,$state) {
+      $arrLookup = $this->APIService->LookupAddress($street_address,$city,$state);
+      if ($arrLookup['valid'] == 1) {
+          return $arrLookup['county'];
+      }
+      else {
+          return 'error';
+      }
+  }
+  
+  public function MatchCounty(AddressInterface $customer_address){
+      /** @var \Drupal\commerce_store\Resolver\StoreResolverInterface $resolver */
+      $resolver = \Drupal::service('commerce_store.default_store_resolver');
+      $store_street_address = $resolver->resolve()->getAddress()->getAddressLine1();
+      $store_city = $resolver->resolve()->getAddress()->getLocality();
+      $store_state = $resolver->resolve()->getAddress()->getAdministrativeArea();
+      $store_county = $this->LookupValidAddress($store_street_address,$store_city,$store_state);
+      $cust_street_address = $customer_address->getAddressLine1();
+      $cust_state = $customer_address->getAdministrativeArea();
+      $cust_city = $customer_address->getLocality();
+      $cust_county = $this->LookupValidAddress($cust_street_address, $cust_city, $cust_state);
+      if($store_county == $cust_county) {
+          return true;
+      }
+      else {
+          return false;
+      }
+  }
+  
 }

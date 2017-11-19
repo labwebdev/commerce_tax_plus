@@ -1,0 +1,5 @@
+CommerceTaxPlus.form:
+  title: 'CommerceTaxPlus Testing Form'
+  description: 'Test CommerceTaxPlus'
+  route_name: CommerceTaxPlus.form
+  parent: system.admin_config_development
