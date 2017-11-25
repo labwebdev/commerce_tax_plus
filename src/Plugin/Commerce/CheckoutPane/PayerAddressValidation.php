@@ -11,11 +11,11 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 
 /**
- * Provides the payment information pane.
+ * Provides the payment information plus pane.
  *
  * @CommerceCheckoutPane(
- *   id = "payer_address_validation",
- *   label = @Translation("Payer Address Validation"),
+ *   id = "payment_info_plus",
+ *   label = @Translation("Payment Info Plus"),
  *   default_step = "order_information",
  *   
  * )
