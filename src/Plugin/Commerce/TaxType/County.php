@@ -8,10 +8,12 @@ use Drupal\commerce_tax\Resolver\ChainTaxRateResolverInterface;
 use Drupal\commerce_tax\TaxZone;
 use Drupal\Component\Uuid\UuidInterface;
 use Drupal\Component\Utility\Html;
+use Drupal\Core\Url;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+//use Symfony\Component\HttpFoundation\RedirectResponse;
 
 //mod
 use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeBase;
@@ -19,6 +21,8 @@ use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\profile\Entity\ProfileInterface;
 use Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService;
 use CommerceGuys\Addressing\AddressInterface;
+use Drupal\commerce\Response\NeedsRedirectException;
+
 
 /**
  * Provides the County tax type.
@@ -437,19 +441,56 @@ class County extends LocalTaxTypeBase {
    *   The tax zones.
    */
   protected function resolveZones(OrderItemInterface $order_item, ProfileInterface $customer_profile) {
+      $order = $order_item->getOrder()->id();
       $customer_address = $customer_profile->get('address')->first();
       $resolved_zones = [];
       foreach ($this->getZones() as $zone) {
-          if ($zone->match($customer_address)) {          
-              if($this->MatchCounty($customer_address)){
+          if ($zone->match($customer_address)) {
+              $MatchResult = $this->MatchCounty($customer_address, $order);
+              if($MatchResult == "yes")
+              {
                   $resolved_zones[] = $zone;
               }
           }
       }
-      return $resolved_zones;
+      if($MatchResult == "store_error")
+      {
+          //drupal_set_message(t('store address error1'));
+          $orderobj = $order_item->getOrder();
+          if(!$orderobj->getData('address_error')) {
+            $orderobj->setData('address_error', 'Store address is invalid.  Please alert the web site owner.');
+            $orderobj->save();
+          }
+          throw new NeedsRedirectException(Url::fromRoute('commerce_checkout.form', [
+              'commerce_order' => $order,
+              'step' => 'order_information',
+          ])->toString());
+          //drupal_set_message(t('store address error2'));
+      }
+      elseif($MatchResult == "cust_error")
+      {
+          //drupal_set_message(t('customer address error1'));
+          $orderobj = $order_item->getOrder();
+          if(!$orderobj->getData('address_error')) {
+            $orderobj->setData('address_error', 'Address is invalid.  Please enter proper address.');
+            $orderobj->save();
+          }
+          //uncomment me
+//           throw new NeedsRedirectException(Url::fromRoute('commerce_checkout.form', [
+//               'commerce_order' => $order,
+//               'step' => 'order_information',
+//           ])->toString());
+          
+          //drupal_set_message(t('customer address error2'));
+      }
+      else
+      {
+
+          return $resolved_zones;
+      }
   }
   
-  public function LookupValidAddress($street_address,$city,$state) {
+  public function LookupValidAddress($street_address,$city,$state, $order) {
       $arrLookup = $this->APIService->LookupAddress($street_address,$city,$state);
       if ($arrLookup['valid'] == 1) {
           return $arrLookup['county'];
@@ -459,19 +500,27 @@ class County extends LocalTaxTypeBase {
       }
   }
   
-  public function MatchCounty(AddressInterface $customer_address){
+  public function MatchCounty(AddressInterface $customer_address, $order){
       /** @var \Drupal\commerce_store\Resolver\StoreResolverInterface $resolver */
       $resolver = \Drupal::service('commerce_store.default_store_resolver');
       $store_street_address = $resolver->resolve()->getAddress()->getAddressLine1();
       $store_city = $resolver->resolve()->getAddress()->getLocality();
       $store_state = $resolver->resolve()->getAddress()->getAdministrativeArea();
-      $store_county = $this->LookupValidAddress($store_street_address,$store_city,$store_state);
+      $store_county = $this->LookupValidAddress($store_street_address,$store_city,$store_state, $order);
       $cust_street_address = $customer_address->getAddressLine1();
       $cust_state = $customer_address->getAdministrativeArea();
       $cust_city = $customer_address->getLocality();
-      $cust_county = $this->LookupValidAddress($cust_street_address, $cust_city, $cust_state);
-      if($store_county == $cust_county) {
-          return true;
+      $cust_county = $this->LookupValidAddress($cust_street_address, $cust_city, $cust_state, $order);
+      if($store_county == 'error')
+      {
+          return "store_error";
+      }
+      elseif($cust_county == 'error')
+      {
+          return "cust_error";
+      }
+      elseif($store_county == $cust_county) {
+          return "yes";
       }
       else {
           return false;

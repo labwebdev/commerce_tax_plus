@@ -17,18 +17,26 @@
   */
 
 //to modify a form:
-  // function commerce_tax_plus_form_alter(&$form, &$form_state, $form_id) {
-  //   drupal_set_message(t($form_id));
+  function commerce_tax_plus_form_alter(&$form, &$form_state, $form_id) {
+//      drupal_set_message(t($form_id));
   //
-  //
+  //    commerce-checkout-flow-multistep-default
   //   if ($form_id == 'commerce_tax_type_edit_form') {
   //          $form['limit_county'] = array(
   //            '#type' => 'checkbox',
   //            '#title' => t('Limit by county'),
   //          );
   //        }
+     //    
+
+//         if ($form_id == 'commerce-checkout-flow-multistep-default') {
+//                $form['test_form'] = array(
+//                  '#type' => 'checkbox',
+//                  '#title' => t('This is a test'),
+//                );
+//              }
   //
-  // }
+  }
 
 
 //example code:
