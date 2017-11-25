@@ -51,15 +51,13 @@ class PayerAddressValidation extends BasePaymentInformation {
      * {@inheritdoc}
      */
     public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition, CheckoutFlowInterface $checkout_flow = NULL) {
-        //parent::create($container, $configuration, $plugin_id, $plugin_definition);
         return new static(
             $configuration,
             $plugin_id,
             $plugin_definition,
             $checkout_flow,
             $container->get('entity_type.manager'),
-            $container->get('smartystreetsapi.service')
-         
+            $container->get('smartystreetsapi.service')       
             );
     }
     
@@ -75,7 +73,7 @@ class PayerAddressValidation extends BasePaymentInformation {
         $cust_zip = $values['add_payment_method']['billing_information']['address'][0]['address']['postal_code'];
         $valid_address = $this->LookupValidAddress($cust_address, $cust_city, $cust_state);
         if($valid_address==0){
-            $form_state->setErrorByName('billing_information', t('The address entered is not valid, please enter valid address.'));
+            $form_state->setErrorByName('billing_information', t('<strong><font color="red">Error: The address entered is not valid. Please input a valid address.</font></strong>'));
         }
     }
 
