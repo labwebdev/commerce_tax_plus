@@ -1,5 +1,7 @@
-name: commerce_tax_plus
-description: commerce_tax_plus uses SmartyStreets.com API Integration
+name: Commerce Tax Plus
+description: Extends sales tax types in commerce 2.0 adding city/county limits and address validation.
 package: Custom
 type: module
 core: 8.x
+dependencies:
+  - smartystreetsapi:SmartyStreetsAPI
