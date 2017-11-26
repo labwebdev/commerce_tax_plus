@@ -13,8 +13,6 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-
-//mod
 use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeBase;
 use Drupal\commerce_order\Entity\OrderItemInterface;
 use Drupal\profile\Entity\ProfileInterface;
@@ -32,7 +30,6 @@ use Drupal\commerce\Response\NeedsRedirectException;
  * )
  */
 class CustomPlus extends LocalTaxTypeBase {
-    //mod
     /**
      * @var \Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService
      */
@@ -45,7 +42,6 @@ class CustomPlus extends LocalTaxTypeBase {
    */
   protected $uuidGenerator;
 
-  //mod
   /**
    * Constructs a new County object.
    * {@inheritdoc}
@@ -68,11 +64,8 @@ class CustomPlus extends LocalTaxTypeBase {
    */
   public function __construct(array $configuration, $plugin_id, $plugin_definition, EntityTypeManagerInterface $entity_type_manager, EventDispatcherInterface $event_dispatcher, RounderInterface $rounder, ChainTaxRateResolverInterface $chain_rate_resolver, UuidInterface $uuid_generator, SmartyStreetsAPIService $APIService) {
     parent::__construct($configuration, $plugin_id, $plugin_definition, $entity_type_manager, $event_dispatcher, $rounder, $chain_rate_resolver);
-
     $this->uuidGenerator = $uuid_generator;
-    //mod
     $this->APIService = $APIService;
-    
   }
 
   /**
@@ -88,7 +81,6 @@ class CustomPlus extends LocalTaxTypeBase {
       $container->get('commerce_price.rounder'),
       $container->get('commerce_tax.chain_tax_rate_resolver'),
       $container->get('uuid'),
-      //mod
       $container->get('smartystreetsapi.service')
       
     );
@@ -133,6 +125,30 @@ class CustomPlus extends LocalTaxTypeBase {
       '#description' => t('Used to identify the applied tax in order summaries.'),
       '#options' => $this->getDisplayLabels(),
       '#default_value' => $this->configuration['display_label'],
+    ];
+    if (array_key_exists('plus_limit_city', $this->configuration)) {
+        $plus_limit_city = $this->configuration['plus_limit_city'];
+    }
+    else {
+        $plus_limit_city = 0;
+    }
+    $form['plus_limit_city'] = [
+        '#type' => 'checkbox',
+        '#title' => t('Limit by city'),
+        '#description' => t('Sales taxes are applied only if the store and the customer are in the same city.'),
+        '#default_value' => $plus_limit_city
+    ];
+    if (array_key_exists('plus_limit_county', $this->configuration)) {
+        $plus_limit_county = $this->configuration['plus_limit_county'];
+    }
+    else {
+        $plus_limit_county = 0;
+    }
+    $form['plus_limit_county'] = [
+        '#type' => 'checkbox',
+        '#title' => t('Limit by county'),
+        '#description' => t('Sales taxes are applied only if the store and the customer are in the same county.'),
+        '#default_value' => $plus_limit_county
     ];
     $form['round'] = [
       '#type' => 'checkbox',
@@ -228,32 +244,6 @@ class CustomPlus extends LocalTaxTypeBase {
         '#type' => 'address_zone_territory',
         '#default_value' => $territory,
         '#required' => TRUE,
-      ];
-      if (array_key_exists('plus_county_limits', $this->configuration)) {
-          $plus_county_limit = $this->configuration['plus_county_limits'][$index];
-      }
-      else {
-          $plus_county_limit = 0;
-      }
-      $territory_form['limit_county'] = [
-          '#type' => 'checkbox',
-          '#title' => t('Limit by county (only apply if customer and store are in the same county)'),
-          '#prefix' => '<tr><td>',
-          '#suffix' => '</td></tr>',
-          '#default_value' => $plus_county_limit,
-      ];
-      if (array_key_exists('plus_city_limits', $this->configuration)) {
-          $plus_city_limit = $this->configuration['plus_city_limits'][$index];
-      }
-      else {
-          $plus_city_limit = 0;
-      }
-      $territory_form['limit_city'] = [
-          '#type' => 'checkbox',
-          '#title' => t('Limit by city (only apply if customer and store are in the same city)'),
-          '#prefix' => '<tr><td>',
-          '#suffix' => '</td></tr>',
-          '#default_value' => $plus_city_limit,
       ];
       $territory_form['remove'] = [
         '#type' => 'submit',
@@ -365,6 +355,8 @@ class CustomPlus extends LocalTaxTypeBase {
       $values = $form_state->getValue($form['#parents']);
       $this->configuration['display_label'] = $values['display_label'];
       $this->configuration['round'] = $values['round'];
+      $this->configuration['plus_limit_city'] = $values['plus_limit_city'];
+      $this->configuration['plus_limit_county'] = $values['plus_limit_county'];
       $this->configuration['rates'] = [];
       foreach (array_filter($values['rates']) as $rate) {
           $ratestr = $rate['percentage'];
@@ -381,8 +373,6 @@ class CustomPlus extends LocalTaxTypeBase {
       $this->configuration['plus_city_limits'] = [];
       foreach (array_filter($values['territories']) as $territory) {
         $this->configuration['territories'][] = $territory['territory'];
-        $this->configuration['plus_county_limits'][] = $territory['limit_county'];
-        $this->configuration['plus_city_limits'][] = $territory['limit_city'];
       }
     }
   }
@@ -396,6 +386,9 @@ class CustomPlus extends LocalTaxTypeBase {
   protected function getDisplayLabels() {
     return [
       'tax' => $this->t('Tax'),
+      'state_tax' => $this->t('State Tax'),
+      'city_tax' => $this->t('City Tax'),
+      'county_tax' => $this->t('County Tax'),
       'vat' => $this->t('VAT'),
       // Australia, New Zealand, Singapore, Hong Kong, India, Malaysia.
       'gst' => $this->t('GST'),
@@ -471,18 +464,45 @@ class CustomPlus extends LocalTaxTypeBase {
    */
   protected function resolveZones(OrderItemInterface $order_item, ProfileInterface $customer_profile) {
       $order = $order_item->getOrder()->id();
+      $MatchStateResult = "na";
+      $plus_limit_county = $this->configuration['plus_limit_county'];
+      $MatchCountyResult = "na";
+      $plus_limit_city = $this->configuration['plus_limit_city'];
+      $MatchCityResult = "na";
       $customer_address = $customer_profile->get('address')->first();
       $resolved_zones = [];
       foreach ($this->getZones() as $zone) {
           if ($zone->match($customer_address)) {
-              $MatchResult = $this->MatchCounty($customer_address, $order);
-              if($MatchResult == "yes")
-              {
-                  $resolved_zones[] = $zone;
+              $MatchStateResult = "yes";
+              if($plus_limit_county == 1) {
+                  $MatchCountyResult = $this->MatchCounty($customer_address, $order);
+               }
+              if($plus_limit_city == 1) {
+                  $MatchCityResult = $this->MatchCity($customer_address);
               }
           }
       }
-      if($MatchResult == "store_error")
+      if ($MatchStateResult == "yes") {
+          if ($plus_limit_county == 1 && $plus_limit_city == 1){
+              if ($MatchCountyResult == "yes" && $MatchCityResult == "yes") {
+                  $resolved_zones[] = $zone;
+              }
+          }
+          elseif ($plus_limit_county == 1 && $plus_limit_city == 0) {
+              if ($MatchCountyResult == "yes") {
+                  $resolved_zones[] = $zone;
+              }
+          }
+          elseif ($plus_limit_county == 0 && $plus_limit_city == 1) {
+              if ($MatchCityResult == "yes") {
+                  $resolved_zones[] = $zone;
+              }
+          }
+          elseif ($plus_limit_county == 0 && $plus_limit_city == 0) {
+                  $resolved_zones[] = $zone;
+          }
+      }
+      if($MatchCountyResult == "store_error")
       {
           drupal_set_message(t('Store address error'));
           $orderobj = $order_item->getOrder();
@@ -495,7 +515,7 @@ class CustomPlus extends LocalTaxTypeBase {
               'step' => 'order_information',
           ])->toString());
       }
-      elseif($MatchResult == "cust_error")
+      elseif($MatchCountyResult == "cust_error")
       {
           drupal_set_message(t('Customer address error'));
           $orderobj = $order_item->getOrder();
@@ -523,6 +543,18 @@ class CustomPlus extends LocalTaxTypeBase {
       else {
           return 'error';
       }
+  }
+  public function MatchCity(AddressInterface $customer_address) {
+      /** @var \Drupal\commerce_store\Resolver\StoreResolverInterface $resolver */
+      $resolver = \Drupal::service('commerce_store.default_store_resolver');
+      $store_city = $resolver->resolve()->getAddress()->getLocality();
+      $cust_city = $customer_address->getLocality();
+      if($store_city == $cust_city) {
+          return "yes";
+      }
+      else {
+          return "no";
+      }       
   }
   
   public function MatchCounty(AddressInterface $customer_address, $order){
