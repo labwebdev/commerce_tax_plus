@@ -4,10 +4,14 @@ namespace Drupal\commerce_tax_plus\Plugin\Commerce\CheckoutPane;
 
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
-use Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService;
-use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowInterface;
-use Drupal\commerce_payment\Plugin\Commerce\CheckoutPane\PaymentInformation as BasePaymentInformation;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\commerce_checkout\Plugin\Commerce\CheckoutFlow\CheckoutFlowInterface;
+
+//This is the use statement for the PaymentInformation BASE plugin aliased as BasePaymentInformation:
+use Drupal\commerce_payment\Plugin\Commerce\CheckoutPane\PaymentInformation as BasePaymentInformation;
+
+//This is the use statement for the SmartyStreetsAPI service module:
+use Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService;
 
 
 /**
@@ -21,13 +25,17 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * )
  */
 
+//PayerAddressValidation class extending the functionality in the PaymentInformation 
+//(aka BasePaymentInformation - see use statement above)
 class PayerAddressValidation extends BasePaymentInformation {
+    //Declaration of the $APIService variable to be used to connect to the SmartyStreetsAPI service module:
     /**
      * @var \Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService
      */
     protected $APIService;
     
-   
+    //Constructor function to setup the APIService and call the parent constructure function from the
+    //CheckOutPaneBase plugin.
     /**
      * Constructs a new CheckoutPaneBase object.
      *
@@ -47,6 +55,7 @@ class PayerAddressValidation extends BasePaymentInformation {
         $this->APIService = $APIService;
     }
     
+    //create function that overrides the CheckOutBasePane plugin create function.
     /**
      * {@inheritdoc}
      */
@@ -61,6 +70,10 @@ class PayerAddressValidation extends BasePaymentInformation {
             );
     }
     
+    //This is the validatePaneForm function that overrides the one in the PaymentInformation plugin (aka BasePaymentInformation)
+    //In this function is where the address that the customer entered is validated by calling the LookupValidAddress function
+    //to check it via the SmartyStreetsAPI service plugin.  It will set an error state and send the user back to the
+    //billing information screen to prompt the user to re-enter the customers address.
     /**
      * {@inheritdoc}
      */
@@ -77,6 +90,8 @@ class PayerAddressValidation extends BasePaymentInformation {
         }
     }
 
+    //This is the LookupValidAddress function.  This function uses the SmartyStreetsAPI service to
+    //validate the address entered by calling the services at smartystreets.com.
     //todo: add zip code into lookup (also requires smartystreetsAPI module update too)
     public function LookupValidAddress($street_address,$city,$state) {
         $arrLookup = $this->APIService->LookupAddress($street_address,$city,$state);

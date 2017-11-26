@@ -13,7 +13,6 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-//use Symfony\Component\HttpFoundation\RedirectResponse;
 
 //mod
 use Drupal\commerce_tax\Plugin\Commerce\TaxType\LocalTaxTypeBase;
@@ -28,11 +27,11 @@ use Drupal\commerce\Response\NeedsRedirectException;
  * Provides the County tax type.
  *
  * @CommerceTaxType(
- *   id = "county",
- *   label = "County",
+ *   id = "custom_plus",
+ *   label = "Custom Plus",
  * )
  */
-class County extends LocalTaxTypeBase {
+class CustomPlus extends LocalTaxTypeBase {
     //mod
     /**
      * @var \Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService
@@ -455,7 +454,7 @@ class County extends LocalTaxTypeBase {
       }
       if($MatchResult == "store_error")
       {
-          //drupal_set_message(t('store address error1'));
+          drupal_set_message(t('Store address error'));
           $orderobj = $order_item->getOrder();
           if(!$orderobj->getData('address_error')) {
             $orderobj->setData('address_error', 'Store address is invalid.  Please alert the web site owner.');
@@ -465,23 +464,19 @@ class County extends LocalTaxTypeBase {
               'commerce_order' => $order,
               'step' => 'order_information',
           ])->toString());
-          //drupal_set_message(t('store address error2'));
       }
       elseif($MatchResult == "cust_error")
       {
-          //drupal_set_message(t('customer address error1'));
+          drupal_set_message(t('Customer address error'));
           $orderobj = $order_item->getOrder();
           if(!$orderobj->getData('address_error')) {
-            $orderobj->setData('address_error', 'Address is invalid.  Please enter proper address.');
+            $orderobj->setData('address_error', 'Customer address is invalid.  Please enter proper address.');
             $orderobj->save();
           }
-          //uncomment me
-//           throw new NeedsRedirectException(Url::fromRoute('commerce_checkout.form', [
-//               'commerce_order' => $order,
-//               'step' => 'order_information',
-//           ])->toString());
-          
-          //drupal_set_message(t('customer address error2'));
+          throw new NeedsRedirectException(Url::fromRoute('commerce_checkout.form', [
+              'commerce_order' => $order,
+              'step' => 'order_information',
+          ])->toString());        
       }
       else
       {
@@ -523,7 +518,7 @@ class County extends LocalTaxTypeBase {
           return "yes";
       }
       else {
-          return false;
+          return "no";
       }
   }
   
