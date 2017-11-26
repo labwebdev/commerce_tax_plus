@@ -229,6 +229,25 @@ class CustomPlus extends LocalTaxTypeBase {
         '#default_value' => $territory,
         '#required' => TRUE,
       ];
+      //$plus_county_limts = $form_state->getValue('plus_county_limits');
+      //$plus_county_limts = $this->configuration['plus_county_limits'];
+      //$element['#parents']);
+      //$testie2 = 2;
+      if (array_key_exists('plus_county_limits', $this->configuration)) {
+          $plus_county_limit = $this->configuration['plus_county_limits'][$index];
+      }
+      else {
+          $plus_county_limit = 0;
+      }
+      $territory_form['limit_county'] = [
+          '#type' => 'checkbox',
+          '#title' => t('Limit by county'),
+          '#prefix' => '<tr><td>',
+          '#suffix' => '</td></tr>',
+          '#default_value' => $plus_county_limit,
+          //'#prefix' => '<p>'
+          //'#prefix' => '<p>' . $this->t('The tax type will be used if both the customer and the store belong to one of the territories.') . '</p>',
+      ];
       $territory_form['remove'] = [
         '#type' => 'submit',
         '#name' => 'remove_territory' . $index,
@@ -351,8 +370,11 @@ class CustomPlus extends LocalTaxTypeBase {
         ];
       }
       $this->configuration['territories'] = [];
+      $this->configuration['plus_county_limits'] = [];
       foreach (array_filter($values['territories']) as $territory) {
         $this->configuration['territories'][] = $territory['territory'];
+        $this->configuration['plus_county_limits'][] = $territory['limit_county'];
+        //$testie = 2;
       }
     }
   }
