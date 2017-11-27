@@ -14,3 +14,5 @@ Commerce Price,Commerce Store,OptionsText, Entity Reference Revisions,Profile, S
 
 After installing Commerce Tax Plus Module, disable the default "Payment Information" checkout pane or there will be 2 prompts for billing Info
 which will cause issues.
+
+github: https://github.com/labwebdev/commerce_tax_plus
