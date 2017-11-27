@@ -5,3 +5,6 @@ type: module
 core: 8.x
 dependencies:
   - smartystreetsapi:SmartyStreetsAPI
+  - commerce:commerce
+  - commerce:commerce_checkout
+  - commerce:commerce_tax
