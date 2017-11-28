@@ -19,9 +19,9 @@ use Drupal\SmartyStreetsAPI\Controller\SmartyStreetsAPIService;
  *
  * @CommerceCheckoutPane(
  *   id = "payment_info_plus",
- *   label = @Translation("Payment Info Plus"),
+ *   label = @Translation("Payment Information"),
  *   default_step = "order_information",
- *   
+ *   wrapper_element = "fieldset",
  * )
  */
 
